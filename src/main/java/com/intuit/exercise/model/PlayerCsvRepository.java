@@ -11,12 +11,14 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Repository;
 
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import static com.intuit.exercise.transformer.PlayerCsvTransformer.transferResponseStringToPlayerObject;
 
@@ -47,9 +49,9 @@ public class PlayerCsvRepository implements PlayerRepository{
 
     List<String[]> getPlayersFromFile() {
         List<String[]> data;
+        Path path = getPath();
         // Load the CSV file from the resources folder
         FileReader fileReader ;
-        Path path = Path.of("src", "main", "resources", inputFileName);
         try {
             fileReader = new FileReader(path.toFile());
         } catch (FileNotFoundException e) {
@@ -68,5 +70,27 @@ public class PlayerCsvRepository implements PlayerRepository{
                     HttpStatus.FORBIDDEN, ServiceMessages.INVALID_INPUT, "Error while reading input file"));
         }
         return data;
+    }
+
+    private Path getPath() {
+        String pathStr = getFilePath(inputFileName, System.getProperty("user.dir"));
+        System.out.println("file path = " + pathStr);
+        if (pathStr==null) {
+            log.error("File {} does not exist", inputFileName);
+            throw new NotFoundException(String.format(("File %s does not exist"), inputFileName));
+        }
+        return Path.of(pathStr);
+    }
+
+    private static String getFilePath(String fileName, String whereIAm) {
+        File dir = new File(whereIAm);
+        for(File e : Objects.requireNonNull(dir.listFiles())) {
+            if(e.isFile() && e.getName().equals(fileName)) {return e.getPath();}
+            if(e.isDirectory()) {
+                String path = getFilePath(fileName, e.getPath());
+                if(path != null) {return path;}
+            }
+        }
+        return null;
     }
 }
